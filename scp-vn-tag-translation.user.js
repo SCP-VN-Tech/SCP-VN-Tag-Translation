@@ -3,6 +3,8 @@
 // @namespace    http://tampermonkey.net/
 // @version      1.0
 // @description  Tool tự động dịch tag trên Wiki SCP-VN
+// @updateURL    https://github.com/SCP-VN-Tech/SCP-VN-Tag-Translation/raw/main/scp-vn-tag-translation.user.js
+// @downloadURL  https://github.com/SCP-VN-Tech/SCP-VN-Tag-Translation/raw/main/scp-vn-tag-translation.user.js
 // @match        http://scp-vn.wikidot.com/*
 // @match        https://scp-vn.wikidot.com/*
 // @grant        none
