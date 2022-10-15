@@ -1,0 +1,19 @@
+{
+  "name": "scp-vn-tag-translation",
+  "version": "1.0.0",
+  "description": "A [Tampermonkey](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo) userscript for SCP-VN Wiki that adds a button to the tag editing interface to automatically translate tags.",
+  "main": "scp-vn-tag-translation.user.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SCP-VN-Tech/SCP-VN-Tag-Translation.git"
+  },
+  "author": "wolf20482",
+  "license": "AGPL-3.0-or-later",
+  "bugs": {
+    "url": "https://github.com/SCP-VN-Tech/SCP-VN-Tag-Translation/issues"
+  },
+  "homepage": "https://github.com/SCP-VN-Tech/SCP-VN-Tag-Translation#readme"
+}
