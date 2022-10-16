@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Tool Dịch Tag Wiki SCP-VN
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.1
 // @description  Tool tự động dịch tag trên Wiki SCP-VN
 // @updateURL    https://github.com/SCP-VN-Tech/SCP-VN-Tag-Translation/raw/main/scp-vn-tag-translation.user.js
 // @downloadURL  https://github.com/SCP-VN-Tech/SCP-VN-Tag-Translation/raw/main/scp-vn-tag-translation.user.js
@@ -23,7 +23,7 @@ window.translateTags = function translateTags(responseText, sub) {
 	var tagForm = document.getElementById("page-tags-input");
 	var newTags = tagForm.value;
 	for (var i = 0; i < tagList.tags.length; i++) {
-		newTags = newTags.replaceAll(new RegExp(`\\b${tagList.tags[i].en}\\b`, "g"), tagList.tags[i].vi);
+		newTags = newTags.replaceAll(new RegExp(`\\b${tagList.tags[i].en}\\b`, "gi"), tagList.tags[i].vi);
 	}
 	tagForm.value = newTags;
 	sub.textContent = "Đã dịch toàn bộ tag!";
