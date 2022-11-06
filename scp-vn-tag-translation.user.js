@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Tool Dịch Tag Wiki SCP-VN
 // @namespace    http://tampermonkey.net/
-// @version      1.1
+// @version      1.2
 // @description  Tool tự động dịch tag trên Wiki SCP-VN
 // @updateURL    https://github.com/SCP-VN-Tech/SCP-VN-Tag-Translation/raw/main/scp-vn-tag-translation.user.js
 // @downloadURL  https://github.com/SCP-VN-Tech/SCP-VN-Tag-Translation/raw/main/scp-vn-tag-translation.user.js
@@ -15,17 +15,29 @@
 // TOML parser derived from https://github.com/BinaryMuse/toml-node
 
 "use strict";
-var day = 1000 * 60 * 60 * 24;
+var halfDay = 1000 * 60 * 60 * 12;
 
 // Parse tag translations TOML, replace tags in tag input with translated tags
 window.translateTags = function translateTags(responseText, sub) {
 	var tagList = tomlParse(responseText);
 	var tagForm = document.getElementById("page-tags-input");
-	var newTags = tagForm.value;
+	var tags = tagForm.value.split(" ");
+	var newTags = "";
 	for (var i = 0; i < tagList.tags.length; i++) {
-		newTags = newTags.replaceAll(new RegExp(`\\b${tagList.tags[i].en}\\b`, "gi"), tagList.tags[i].vi);
+		var tag = tags.find(function (element) {
+			return element == tagList.tags[i].en;
+		});
+		if (tag === undefined) continue;
+		tag = tag.replaceAll(new RegExp(`\\b${tagList.tags[i].en}\\b`, "gi"), tagList.tags[i].vi);
+		var index = tags.findIndex(function (element) {
+			return element == tagList.tags[i].en;
+		});
+		tags[index] = tag;
 	}
-	tagForm.value = newTags;
+	for (var i = 0; i < tags.length; i++) {
+		newTags += tags[i] + " ";
+	}
+	tagForm.value = newTags.trim();
 	sub.textContent = "Đã dịch toàn bộ tag!";
 }
 
@@ -43,7 +55,7 @@ window.getTagTranslations = function getTagTranslations(save) {
 	var useCachedResponse =
 		lastFetchedTimestamp != null &&
 		lastFetchedResponse != null &&
-		new Date(lastFetchedTimestamp).getTime() + day > new Date().getTime();
+		new Date(lastFetchedTimestamp).getTime() + halfDay > new Date().getTime();
 
 	if (useCachedResponse) {
 		console.info("Using cached tag translation list");
