@@ -15,30 +15,34 @@
 // TOML parser derived from https://github.com/BinaryMuse/toml-node
 
 "use strict";
-var halfDay = 1000 * 60 * 60 * 12;
 
 // Parse tag translations TOML, replace tags in tag input with translated tags
 window.translateTags = function translateTags(responseText, sub) {
-	var tagList = tomlParse(responseText);
-	var tagForm = document.getElementById("page-tags-input");
-	var tags = tagForm.value.split(" ");
-	var newTags = "";
-	for (var i = 0; i < tagList.tags.length; i++) {
-		var tag = tags.find(function (element) {
-			return element == tagList.tags[i].en;
-		});
-		if (tag === undefined) continue;
-		tag = tag.replaceAll(new RegExp(`\\b${tagList.tags[i].en}\\b`, "gi"), tagList.tags[i].vi);
-		var index = tags.findIndex(function (element) {
-			return element == tagList.tags[i].en;
-		});
-		tags[index] = tag;
+	try {
+		var tagList = tomlParse(responseText);
+		var tagForm = document.getElementById("page-tags-input");
+		var tags = tagForm.value.split(" ");
+		var newTags = "";
+		for (var i = 0; i < tagList.tags.length; i++) {
+			var tag = tags.find(function (element) {
+				return element == tagList.tags[i].en;
+			});
+			if (tag === undefined) continue;
+			tag = tag.replaceAll(new RegExp(`\\b${tagList.tags[i].en}\\b`, "gi"), tagList.tags[i].vi);
+			var index = tags.findIndex(function (element) {
+				return element == tagList.tags[i].en;
+			});
+			tags[index] = tag;
+		}
+		for (var i = 0; i < tags.length; i++) {
+			newTags += tags[i] + " ";
+		}
+		tagForm.value = newTags.trim();
+		sub.textContent = "Đã dịch toàn bộ tag!";
+	} catch (err) {
+		sub.textContent = "Đã xảy ra lỗi";
+		console.log(err);
 	}
-	for (var i = 0; i < tags.length; i++) {
-		newTags += tags[i] + " ";
-	}
-	tagForm.value = newTags.trim();
-	sub.textContent = "Đã dịch toàn bộ tag!";
 }
 
 window.translateTagsAndSave = function translateTagsAndSave(responseText, sub) {
@@ -50,66 +54,51 @@ window.translateTagsAndSave = function translateTagsAndSave(responseText, sub) {
 window.getTagTranslations = function getTagTranslations(save) {
 	var sub = document.querySelector("#action-area > form > table > tbody > tr > td:nth-child(2) > div");
 	sub.textContent = "Đang truy xuất thông tin tag dịch...";
-	var lastFetchedTimestamp = localStorage.getItem("scp-vn-tag-translations-timestamp");
-	var lastFetchedResponse = localStorage.getItem("scp-vn-tag-translations-response");
-	var useCachedResponse =
-		lastFetchedTimestamp != null &&
-		lastFetchedResponse != null &&
-		new Date(lastFetchedTimestamp).getTime() + halfDay > new Date().getTime();
 
-	if (useCachedResponse) {
-		console.info("Using cached tag translation list");
-		if (save) {
-			translateTagsAndSave(lastFetchedResponse, sub);
-		} else {
-			translateTags(lastFetchedResponse, sub);
+	console.info("Fetching tag translation list");
+	var _xhr = () => {
+		if (window.XMLHttpRequest) {
+			return new XMLHttpRequest();
 		}
-	} else {
-		console.info("Fetching tag translation list");
-		var _xhr = () => {
-			if (window.XMLHttpRequest) {
-				return new XMLHttpRequest();
-			}
-			if (window.ActiveXObject) {
-				try {
-					return new ActiveXObject("Msxml2.XMLHTTP.6.0");
-				} catch (e) { }
-				try {
-					return new ActiveXObject("Msxml2.XMLHTTP.3.0");
-				} catch (e) { }
-				try {
-					return new ActiveXObject("Microsoft.XMLHTTP");
-				} catch (e) { }
-			}
-			return false;
+		if (window.ActiveXObject) {
+			try {
+				return new ActiveXObject("Msxml2.XMLHTTP.6.0");
+			} catch (e) { }
+			try {
+				return new ActiveXObject("Msxml2.XMLHTTP.3.0");
+			} catch (e) { }
+			try {
+				return new ActiveXObject("Microsoft.XMLHTTP");
+			} catch (e) { }
 		}
-		var request = _xhr();
-		request.open("GET", `https://api.codetabs.com/v1/proxy?quest=http://scp-vn.wdfiles.com/local--code/tag-guide-for-translator/3`, true);
-		request.timeout = 10000;
-		request.addEventListener("readystatechange", function () {
-			if (request.readyState === XMLHttpRequest.DONE) {
-				try {
-					if (request.status === 200) {
-						localStorage.setItem("scp-vn-tag-translations-timestamp", new Date());
-						localStorage.setItem("scp-vn-tag-translations-response", request.responseText);
-						if (save) {
-							translateTagsAndSave(request.responseText, sub);
-						} else {
-							translateTags(request.responseText, sub);
-						}
-					} else {
-						sub.textContent = "Đã xảy ra lỗi máy chủ khi truy xuất dữ liệu, vui lòng thử lại sau";
-						console.error(`Server Error (${request.status})`);
-					}
-				} catch (err) {
-					sub.textContent = "Đã xảy ra lỗi phần mềm khi truy xuất dữ liệu, vui lòng báo cáo lỗi";
-					console.error(`An error has occurred:`);
-					console.error(err);
-				}
-			}
-		});
-		request.send();
+		return false;
 	}
+	var request = _xhr();
+	request.open("GET", `https://api.codetabs.com/v1/proxy?quest=http://scp-vn.wdfiles.com/local--code/tag-guide-for-translator/3`, true);
+	request.timeout = 10000;
+	request.addEventListener("readystatechange", function () {
+		if (request.readyState === XMLHttpRequest.DONE) {
+			try {
+				if (request.status === 200) {
+					localStorage.setItem("scp-vn-tag-translations-timestamp", new Date());
+					localStorage.setItem("scp-vn-tag-translations-response", request.responseText);
+					if (save) {
+						translateTagsAndSave(request.responseText, sub);
+					} else {
+						translateTags(request.responseText, sub);
+					}
+				} else {
+					sub.textContent = "Đã xảy ra lỗi máy chủ khi truy xuất dữ liệu, vui lòng thử lại sau";
+					console.error(`Server Error (${request.status})`);
+				}
+			} catch (err) {
+				sub.textContent = "Đã xảy ra lỗi phần mềm khi truy xuất dữ liệu, vui lòng báo cáo lỗi";
+				console.error(`An error has occurred:`);
+				console.error(err);
+			}
+		}
+	});
+	request.send();
 }
 
 // Load TOML parser JavaScript
