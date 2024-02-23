@@ -1,41 +1,53 @@
 // ==UserScript==
 // @name         Tool Dịch Tag Wiki SCP-VN
 // @namespace    http://tampermonkey.net/
-// @version      1.2.1
+// @version      1.3.0
 // @description  Tool tự động dịch tag trên Wiki SCP-VN
+// @author       wolf20482
 // @updateURL    https://github.com/SCP-VN-Tech/SCP-VN-Tag-Translation/raw/main/scp-vn-tag-translation.user.js
 // @downloadURL  https://github.com/SCP-VN-Tech/SCP-VN-Tag-Translation/raw/main/scp-vn-tag-translation.user.js
 // @match        http://scp-vn.wikidot.com/*
 // @match        https://scp-vn.wikidot.com/*
-// @icon         https://www.google.com/s2/favicons?sz=64&domain=wikidot.com
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=scp-vn.wikidot.com
 // @grant        none
 // ==/UserScript==
 
-// Some portions derived from https://github.com/scpwiki/SCP-Wiki-Staff-Identification
-// TOML parser derived from https://github.com/BinaryMuse/toml-node
+const TAG_LIST = "http://scp-vn.wikidot.com/fragment:tag-guide-for-translator";
+const TAG_LIST_QUERY = `query{vnTagList: page(url:"${TAG_LIST}"){wikidotInfo{source}}origEnTags: page(url:"http://scp-wiki.wikidot.com${window.location.pathname}"){wikidotInfo{tags}}}`;
 
 "use strict";
 
-// Parse tag translations TOML, replace tags in tag input with translated tags
-window.translateTags = function translateTags(responseText, sub) {
-	try {
-		var tagList = tomlParse(responseText);
-		var tagForm = document.getElementById("page-tags-input");
-		var tags = tagForm.value.split(" ");
-		var newTags = "";
-		for (var i = 0; i < tagList.tags.length; i++) {
-			var tag = tags.find(function (element) {
-				return element == tagList.tags[i].en;
+window.parseTagList = function parseTagList(source) {
+	let res = [];
+	source.split("\n").forEach((line) => {
+		if (line.includes("*/system:page-tags/tag/") || line.includes("KHÔNG SỬ DỤNG")) {
+			let parts = line.split("||").filter(part => part !== "");
+			res.push({
+				en: parts[0].trim().includes("CHƯA XỬ LÝ") ? null : parts[0].trim(),
+				vi: parts[1].trim().includes("KHÔNG SỬ DỤNG") ? "" : parts[1].split("/").pop().split(" ")[0].trim(),
+				orig: parts[2].trim().includes("CHƯA XỬ LÝ") || parts[2].trim() == "N/A" ? null : parts[2].trim()
 			});
-			if (tag === undefined) continue;
-			tag = tag.replaceAll(new RegExp(`\\b${tagList.tags[i].en}\\b`, "gi"), tagList.tags[i].vi);
-			var index = tags.findIndex(function (element) {
-				return element == tagList.tags[i].en;
-			});
-			tags[index] = tag;
 		}
-		for (var i = 0; i < tags.length; i++) {
-			newTags += tags[i] + " ";
+	});
+	return res;
+}
+
+window.translateTags = function translateTags(data, save) {
+	let sub = document.querySelector("#action-area > form > table > tbody > tr > td:nth-child(2) > div");
+	try {
+		let tagList = parseTagList(data.vnTagList.wikidotInfo.source);
+		let tagForm = document.getElementById("page-tags-input");
+		let oldTags = tagForm.value.split(" ");
+		if (tagForm.value == "") {
+			oldTags = data.origEnTags.wikidotInfo.tags;
+		}
+		let newTags = "";
+		for (let i = 0; i < oldTags.length; i++) {
+			let oldTag = oldTags[i];
+			let translatedTag = tagList.find(entry => entry.orig == oldTag || entry.en == oldTag);
+			if (oldTag == translatedTag?.orig || oldTag == translatedTag?.en) {
+				newTags += translatedTag?.vi + " ";
+			}
 		}
 		tagForm.value = newTags.trim();
 		sub.textContent = "Đã dịch toàn bộ tag!";
@@ -43,74 +55,43 @@ window.translateTags = function translateTags(responseText, sub) {
 		sub.textContent = "Đã xảy ra lỗi";
 		console.log(err);
 	}
-}
-
-window.translateTagsAndSave = function translateTagsAndSave(responseText, sub) {
-	translateTags(responseText, sub);
-	return WIKIDOT.modules.PageTagsModule.listeners.save(event);
-}
-
-// Get tag translations TOML from http://scp-vn.wdfiles.com/local--code/tag-guide-for-translator/3
-window.getTagTranslations = function getTagTranslations(save) {
-	var sub = document.querySelector("#action-area > form > table > tbody > tr > td:nth-child(2) > div");
-	sub.textContent = "Đang truy xuất thông tin tag dịch...";
-
-	console.info("Fetching tag translation list");
-	var _xhr = () => {
-		if (window.XMLHttpRequest) {
-			return new XMLHttpRequest();
-		}
-		if (window.ActiveXObject) {
-			try {
-				return new ActiveXObject("Msxml2.XMLHTTP.6.0");
-			} catch (e) { }
-			try {
-				return new ActiveXObject("Msxml2.XMLHTTP.3.0");
-			} catch (e) { }
-			try {
-				return new ActiveXObject("Microsoft.XMLHTTP");
-			} catch (e) { }
-		}
-		return false;
+	if (save) {
+		return WIKIDOT.modules.PageTagsModule.listeners.save(event);
 	}
-	var request = _xhr();
-	request.open("GET", `https://api.codetabs.com/v1/proxy?quest=http://scp-vn.wdfiles.com/local--code/tag-guide-for-translator/3`, true);
-	request.timeout = 10000;
-	request.addEventListener("readystatechange", function () {
-		if (request.readyState === XMLHttpRequest.DONE) {
-			try {
-				if (request.status === 200) {
-					localStorage.setItem("scp-vn-tag-translations-timestamp", new Date());
-					localStorage.setItem("scp-vn-tag-translations-response", request.responseText);
-					if (save) {
-						translateTagsAndSave(request.responseText, sub);
-					} else {
-						translateTags(request.responseText, sub);
-					}
-				} else {
-					sub.textContent = "Đã xảy ra lỗi máy chủ khi truy xuất dữ liệu, vui lòng thử lại sau";
-					console.error(`Server Error (${request.status})`);
-				}
-			} catch (err) {
-				sub.textContent = "Đã xảy ra lỗi phần mềm khi truy xuất dữ liệu, vui lòng báo cáo lỗi";
-				console.error(`An error has occurred:`);
-				console.error(err);
-			}
+}
+
+window.fetchData = async function fetchData(query, save) {
+	try {
+		const response = await fetch("https://api.crom.avn.sh/graphql", {
+			method: "POST",
+			headers: new Headers({
+				"Content-Type": "application/json"
+			}),
+			body: JSON.stringify({ query: query })
+		});
+
+		let sub = document.querySelector("#action-area > form > table > tbody > tr > td:nth-child(2) > div");
+
+		if (!response.ok) {
+			sub.textContent = `Đã xảy ra lỗi máy chủ`;
+			return;
 		}
-	});
-	request.send();
+
+		const { data, errors } = await response.json();
+
+		if (errors && errors.length > 0) {
+			sub.textContent = "Đã xảy ra lỗi";
+			console.error(errors);
+			return;
+		}
+
+		return query == translateTags(data, save);
+	} catch (error) {
+		sub.textContent = "Đã xảy ra lỗi";
+		console.error("Fetch error: ", error);
+	}
 }
 
-// Load TOML parser JavaScript
-window.loadTomlParser = function loadTomlParser() {
-	var script = document.createElement("script");
-	script.type = "text/javascript";
-	script.src = "https://cdn.jsdelivr.net/gh/SCP-VN-Tech/SCP-VN-Tag-Translation/toml-parser.min.js";
-	document.head.appendChild(script);
-	console.log("Loaded TOML parser.");
-}
-
-// Show "Translate Tags" button and "Translate and Save Tags" button when the tag edit interface is opened
 window.initWikidotAddTag = function initWikidotAddTag() {
 	if (typeof WIKIDOT == "object") {
 		try {
@@ -127,7 +108,7 @@ window.initWikidotAddTag = function initWikidotAddTag() {
 				translateInput.classList.add("btn-default");
 				translateInput.value = "Dịch Tag";
 				translateInput.addEventListener("click", function () {
-					getTagTranslations(false);
+					fetchData(TAG_LIST_QUERY, false);
 				});
 				buttonArea.appendChild(translateInput);
 
@@ -137,7 +118,7 @@ window.initWikidotAddTag = function initWikidotAddTag() {
 				translateAndSaveInput.classList.add("btn-default");
 				translateAndSaveInput.value = "Dịch và Lưu Tag";
 				translateAndSaveInput.addEventListener("click", function () {
-					getTagTranslations(true);
+					fetchData(TAG_LIST_QUERY, true);
 				});
 				buttonArea.appendChild(translateAndSaveInput);
 			}
@@ -150,6 +131,4 @@ window.initWikidotAddTag = function initWikidotAddTag() {
 		return setTimeout(initWikidotAddTag, 1000);
 	}
 }
-
-loadTomlParser();
 initWikidotAddTag();
