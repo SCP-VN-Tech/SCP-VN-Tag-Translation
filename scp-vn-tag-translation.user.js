@@ -47,6 +47,8 @@ window.translateTags = function translateTags(data, save) {
 			let translatedTag = tagList.find(entry => entry.orig == oldTag || entry.en == oldTag);
 			if (oldTag == translatedTag?.orig || oldTag == translatedTag?.en) {
 				newTags += translatedTag?.vi + " ";
+			} else {
+				newTags += oldTag + " ";
 			}
 		}
 		tagForm.value = newTags.trim();
