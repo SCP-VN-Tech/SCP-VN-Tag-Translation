@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Tool Dịch Tag Wiki SCP-VN
 // @namespace    http://tampermonkey.net/
-// @version      1.3.1
+// @version      1.3.2
 // @description  Tool tự động dịch tag trên Wiki SCP-VN
 // @author       wolf20482
 // @updateURL    https://github.com/SCP-VN-Tech/SCP-VN-Tag-Translation/raw/main/scp-vn-tag-translation.user.js
@@ -39,7 +39,7 @@ window.translateTags = function translateTags(data, save) {
 		let tagForm = document.getElementById("page-tags-input");
 		let oldTags = tagForm.value.split(" ");
 		if (tagForm.value == "") {
-			oldTags = data.origEnTags.wikidotInfo.tags;
+			oldTags = data.origEnTags.wikidotInfo.tags.filter(str => !str.includes("crom:series"));
 		}
 		let newTags = "";
 		for (let i = 0; i < oldTags.length; i++) {
